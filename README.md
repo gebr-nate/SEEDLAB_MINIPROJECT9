@@ -4,7 +4,7 @@ Repository for **EENG350: Systems Exploration, Engineering, and Design Laborator
 ## Team Members
 | Name | Primary Role |
 |------|--------------|
-| Nathan Gebre-Hiwot | [Controls / Arduino] |
+| [Nathan Gebre-Hiwot] | [Controls / Arduino] |
 | [Bryce Lapham] | [Controls / Arduino] |
 | [Jake Toschik] | [Computer Vision] |
 | [Megan Brady] | [Computer Vision] |
