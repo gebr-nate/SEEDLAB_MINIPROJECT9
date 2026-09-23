@@ -1,26 +1,4 @@
-// Arudino code 
-/*
- * closed_loop_step.ino
- * EENG350 Mini Project - supplementary test code
- *
- * Closed-loop POSITION step test for both wheels. At t = 1 s the desired
- * position steps from 0 to PI rad (180 degrees = goal "1"). A PI position
- * loop produces a desired speed, and the inner proportional velocity loop
- * turns that into a motor voltage. The integral term rejects disturbances:
- * turn a wheel by hand and it should return to position.
- *
- * Serial output (115200 baud, tab separated):
- *   time [s]   desired_pos [rad]   pos motor 1 [rad]   pos motor 2 [rad]
- * Copy into MATLAB to compare with the Simulink position model.
- *
- * Hardware:
- *   Motor driver enable: pin 4
- *   Motor 1: DIR pin 7, PWM pin 9     Motor 2: DIR pin 8, PWM pin 10
- *   Encoder 1: A -> pin 2 (interrupt), B -> pin 5
- *   Encoder 2: A -> pin 3 (interrupt), B -> pin 6
- *   Battery: 7.6 V
- */
-
+//Arduino Code
 // ---- Timing ----
 const unsigned long desired_Ts_ms = 10;  // sample time (100 Hz loop)
 unsigned long last_time_ms;
@@ -44,7 +22,7 @@ long prevPos_counts[2] = {0, 0};
 // ---- Controller gains ----
 float Kp = 11;             // inner velocity loop: volts per (rad/s) of speed error
 float Kp_pos = 5.0;        // outer position loop: (rad/s) per rad of position error  -- tune
-float Ki_pos = 5;        // outer position loop integral gain -- start at 0, then add
+float Ki_pos = 0;        // outer position loop integral gain -- start at 0, then add
 const float MAX_SPEED = 8.0;          // cap on requested wheel speed [rad/s]
 const float Battery_Voltage = 7.6;    // used to scale voltage into PWM
 
@@ -129,10 +107,4 @@ void loop() {
   while (millis() < last_time_ms + desired_Ts_ms) { }
   last_time_ms = millis();
 
-  // ---- Stop after 5 s (press reset to run again) ----
-  if (current_time > 5.0) {
-    analogWrite(pwmPin[0], 0);
-    analogWrite(pwmPin[1], 0);
-    while (1) { }
-  }
 }
