@@ -1,0 +1,138 @@
+// Arudino code 
+/*
+ * closed_loop_step.ino
+ * EENG350 Mini Project - supplementary test code
+ *
+ * Closed-loop POSITION step test for both wheels. At t = 1 s the desired
+ * position steps from 0 to PI rad (180 degrees = goal "1"). A PI position
+ * loop produces a desired speed, and the inner proportional velocity loop
+ * turns that into a motor voltage. The integral term rejects disturbances:
+ * turn a wheel by hand and it should return to position.
+ *
+ * Serial output (115200 baud, tab separated):
+ *   time [s]   desired_pos [rad]   pos motor 1 [rad]   pos motor 2 [rad]
+ * Copy into MATLAB to compare with the Simulink position model.
+ *
+ * Hardware:
+ *   Motor driver enable: pin 4
+ *   Motor 1: DIR pin 7, PWM pin 9     Motor 2: DIR pin 8, PWM pin 10
+ *   Encoder 1: A -> pin 2 (interrupt), B -> pin 5
+ *   Encoder 2: A -> pin 3 (interrupt), B -> pin 6
+ *   Battery: 7.6 V
+ */
+
+// ---- Timing ----
+const unsigned long desired_Ts_ms = 10;  // sample time (100 Hz loop)
+unsigned long last_time_ms;
+unsigned long start_time_ms;
+float current_time;                      // seconds since start
+
+// ---- Pins (index 0 = motor 1, index 1 = motor 2) ----
+const int enablePin = 4;
+const int dirPin[2] = {7, 8};
+const int pwmPin[2] = {9, 10};
+const int encA[2]   = {2, 3};
+const int encB[2]   = {5, 6};
+
+// ---- Encoder ----
+// CHECK THIS: turn a wheel one full revolution by hand and read the count.
+// Counting only RISING edges of channel A gives 1/4 of full quadrature.
+const float COUNTS_PER_REV = 3200.0;
+volatile long encoderCount[2] = {0, 0};
+long prevPos_counts[2] = {0, 0};
+
+// ---- Controller gains ----
+float Kp = 11;             // inner velocity loop: volts per (rad/s) of speed error
+float Kp_pos = 5.0;        // outer position loop: (rad/s) per rad of position error  -- tune
+float Ki_pos = 5;        // outer position loop integral gain -- start at 0, then add
+const float MAX_SPEED = 8.0;          // cap on requested wheel speed [rad/s]
+const float Battery_Voltage = 7.6;    // used to scale voltage into PWM
+
+// ---- Controller state ----
+float integral_error[2] = {0, 0};     // running integral of position error [rad*s]
+
+// ---- Encoder ISRs: channel B level on A's rising edge gives direction ----
+void encoderISR1() { encoderCount[0] += (digitalRead(encB[0]) == HIGH) ? 1 : -1; }
+void encoderISR2() { encoderCount[1] += (digitalRead(encB[1]) == HIGH) ? 1 : -1; }
+
+void setup() {
+  pinMode(enablePin, OUTPUT);
+  for (int i = 0; i < 2; i++) {
+    pinMode(dirPin[i], OUTPUT);
+    pinMode(pwmPin[i], OUTPUT);
+    pinMode(encA[i], INPUT);
+    pinMode(encB[i], INPUT);
+  }
+  attachInterrupt(digitalPinToInterrupt(encA[0]), encoderISR1, RISING);
+  attachInterrupt(digitalPinToInterrupt(encA[1]), encoderISR2, RISING);
+  digitalWrite(enablePin, HIGH);  // motor driver on
+
+  Serial.begin(115200);
+  last_time_ms = millis();
+  start_time_ms = last_time_ms;
+}
+
+void loop() {
+  float Ts = (float)desired_Ts_ms / 1000.0;          // sample time in seconds
+  current_time = (float)(millis() - start_time_ms) / 1000.0;
+
+  // ---- Position step: 0 before 1 s, PI rad (180 deg) after ----
+  // In the full mini project, replace this with: desired_pos[i] = goal[i] * PI
+  // where goal[i] (0 or 1) is received from the Pi.
+  float desired_pos[2];
+  desired_pos[0] = (current_time < 1.0) ? 0.0 : PI;
+  desired_pos[1] = (current_time < 1.0) ? 0.0 : PI;
+
+  float actual_pos[2], actual_speed[2];
+
+  // Read encoders safely (ISRs can change the counts mid-read)
+  long counts[2];
+  noInterrupts();
+  counts[0] = encoderCount[0];
+  counts[1] = encoderCount[1];
+  interrupts();
+
+  for (int i = 0; i < 2; i++) {
+    // ---- Position and velocity measurement ----
+    actual_pos[i]   = 2 * PI * (float)counts[i] / COUNTS_PER_REV;                        // [rad]
+    actual_speed[i] = 2 * PI * (float)(counts[i] - prevPos_counts[i]) / COUNTS_PER_REV / Ts; // [rad/s]
+    prevPos_counts[i] = counts[i];
+
+    // ---- Outer loop: PI position control -> desired speed ----
+    float pos_error = desired_pos[i] - actual_pos[i];
+    integral_error[i] += pos_error * Ts;
+    float desired_speed = Kp_pos * pos_error + Ki_pos * integral_error[i];
+
+    // Cap the requested speed; anti-windup: undo the integration while capped
+    if (desired_speed > MAX_SPEED || desired_speed < -MAX_SPEED) {
+      integral_error[i] -= pos_error * Ts;
+      desired_speed = constrain(desired_speed, -MAX_SPEED, MAX_SPEED);
+    }
+
+    // ---- Inner loop: P velocity control -> voltage ----
+    float error = desired_speed - actual_speed[i];
+    float Voltage = Kp * error;
+
+    // ---- Output: sign sets direction, magnitude sets PWM ----
+    digitalWrite(dirPin[i], (Voltage > 0) ? HIGH : LOW);
+    unsigned int PWM = 255 * fabs(Voltage) / Battery_Voltage;
+    analogWrite(pwmPin[i], min(PWM, 255));   // saturate at full battery voltage
+  }
+
+  // ---- Data logging ----
+  Serial.print(current_time);   Serial.print("\t");
+  Serial.print(desired_pos[0]); Serial.print("\t");
+  Serial.print(actual_pos[0]);  Serial.print("\t");
+  Serial.println(actual_pos[1]);
+
+  // ---- Hold a fixed sample time ----
+  while (millis() < last_time_ms + desired_Ts_ms) { }
+  last_time_ms = millis();
+
+  // ---- Stop after 5 s (press reset to run again) ----
+  if (current_time > 5.0) {
+    analogWrite(pwmPin[0], 0);
+    analogWrite(pwmPin[1], 0);
+    while (1) { }
+  }
+}
