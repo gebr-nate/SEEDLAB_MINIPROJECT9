@@ -20,9 +20,3 @@ Each project folder has its own `README.md` describing its code, hardware connec
 - Raspberry Pi with camera and Adafruit 16x2 character LCD
 - Arduino with motor driver shield
 - Two Pololu 37D gear motors (50:1) with quadrature encoders
-
-## Getting Started
-```bash
-git clone https://github.com/<username>/SEEDLAB_MINIPROJECT9.git
-cd SEEDLAB_MINIPROJECT9
-```
