@@ -1,0 +1,75 @@
+%% Nathan Gebre-Hiwot Assignment 2b
+%% Closed-Loop Motor POSITION Control: Simulation vs. Experiment
+
+%% Laplace variable (needed for the PI(s) block, which is defined
+%% symbolically in terms of s, e.g. Kp_pos + Ki_pos/s)
+s = tf('s');
+
+%% Motor Model Parameters (from system ID, Section 3.3)
+K = 0.364;      % DC gain [rad/Vs]
+sigma = 18;     % time constant reciprocal [1/s]
+
+%% Inner-Loop Velocity Controller (reused from Assignment 2a)
+Kp_vel = 11;    % proportional velocity gain, set inside the Velocity Subsystem
+
+%% Outer-Loop Position Controller (PI, not full PID)
+% These names MUST match exactly what's typed into the PI(s) block's
+% Gain fields in Simulink (open the block and check - it's expecting
+% bare "Kp" and "Ki", not "Kp_pos"/"Ki_pos").
+Kp = 1;     % TODO: tune proportional gain
+Ki = 0;     % TODO: tune integral gain
+
+%% Run Simulation
+open_system('PI_control')          % open the Simulink model
+out = sim('PI_control');           % run it, results stored in out
+
+%% Load Experimental Data
+data = readmatrix('rawdata.txt');  % TODO: confirm rawdata.txt is on your
+                                    % MATLAB path, and check that the
+                                    % column order below (time, voltage,
+                                    % velocity, position) matches how
+                                    % your file is actually laid out
+
+%% Plot Simulated vs. Experimental Results
+figure
+
+% Plot 1: Voltage
+subplot(3,1,1)
+plot(out.Voltage,'--','linewidth',2)
+hold on
+plot(data(:,1), data(:,2), 'linewidth', 2) % col1=time, col2=voltage
+legend('Simulated','Experimental','location','southeast')
+hold off
+xlabel('Time (s)')
+ylabel('Voltage (V)')
+title('Closed-Loop Voltage: Simulated vs. Experimental')
+
+% Plot 2: Velocity (simulated velocity vs. desired velocity command)
+subplot(3,1,2)
+plot(out.DesiredVelocity,':','linewidth',1.5)
+hold on
+plot(data(:,1), data(:,3), 'linewidth', 2) % col3=velocity
+legend('Desired (commanded)','Experimental','location','southeast')
+hold off
+xlabel('Time (s)')
+ylabel('Angular Velocity (rad/s)')
+title('Velocity: Desired vs. Experimental')
+
+% Plot 3: Position (simulated position vs. desired position step)
+subplot(3,1,3)
+plot(out.Position,'--','linewidth',2)
+hold on
+plot(out.DesiredPosition,':','linewidth',1.5)
+plot(data(:,1), data(:,4), 'linewidth', 2) % col4=position (update index if needed)
+legend('Simulated','Desired (setpoint)','Experimental','location','southeast')
+hold off
+xlabel('Time (s)')
+ylabel('Position (rad)')
+title('Closed-Loop Position: Simulated vs. Experimental')
+
+%% Interpretation
+% TODO: Fill in once Kp_pos/Ki_pos are tuned and data is collected.
+% With PI (no derivative) control on the outer position loop, the
+% integral term should drive steady-state position error to zero,
+% though you may see more overshoot/oscillation than a tuned PID would
+% give, since there's no derivative action to damp the response.
