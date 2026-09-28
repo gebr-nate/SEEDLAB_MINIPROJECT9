@@ -1,6 +1,7 @@
 //Arduino Code
 // ---- Timing ----
 const unsigned long desired_Ts_ms = 10;  // sample time (100 Hz loop)
+const unsigned long RUN_TIME_MS = 5000;  // stop after 5 seconds
 unsigned long last_time_ms;
 unsigned long start_time_ms;
 float current_time;                      // seconds since start
@@ -53,6 +54,14 @@ void setup() {
 void loop() {
   float Ts = (float)desired_Ts_ms / 1000.0;          // sample time in seconds
   current_time = (float)(millis() - start_time_ms) / 1000.0;
+
+  // ---- Stop after 5 seconds ----
+  if (millis() - start_time_ms > RUN_TIME_MS) {
+    for (int i = 0; i < 2; i++) {
+      analogWrite(pwmPin[i], 0);   // shut off both motors
+    }
+    return;                        // skip the rest of loop()
+  }
 
   // ---- Position step: 0 before 1 s, PI rad (180 deg) after ----
   // In the full mini project, replace this with: desired_pos[i] = goal[i] * PI
