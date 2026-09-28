@@ -1,8 +1,3 @@
-%% Nathan Gebre-Hiwot Assignment 2b
-%% Closed-Loop Motor POSITION Control: Simulation vs. Experiment
-
-%% Laplace variable (needed for the PI(s) block, which is defined
-%% symbolically in terms of s, e.g. Kp_pos + Ki_pos/s)
 s = tf('s');
 
 %% Motor Model Parameters (from system ID, Section 3.3)
@@ -16,7 +11,7 @@ Kp_vel = 11;    % proportional velocity gain, set inside the Velocity Subsystem
 % These names MUST match exactly what's typed into the PI(s) block's
 % Gain fields in Simulink (open the block and check - it's expecting
 % bare "Kp" and "Ki", not "Kp_pos"/"Ki_pos").
-Kp = 1;     % TODO: tune proportional gain
+Kp = 5;     % TODO: tune proportional gain
 Ki = 0;     % TODO: tune integral gain
 
 %% Run Simulation
