@@ -34,9 +34,6 @@ void encoderISR1() { encoderCount[0] += (digitalRead(encB[0]) == HIGH) ? 1 : -1;
 void encoderISR2() { encoderCount[1] += (digitalRead(encB[1]) == HIGH) ? 1 : -1; }
 
 // ---- Read goal position from the Pi over serial ----
-// Expected message format: two ASCII digits ('0' or '1') for left and
-// right wheel, followed by a newline, e.g. "01\n" for NW (left=0, right=1).
-// Non-blocking: only updates goal[] once a full message has arrived.
 void readGoalFromPi() {
   static char buf[8];
   static int idx = 0;
@@ -48,7 +45,7 @@ void readGoalFromPi() {
         goal[0] = buf[0] - '0';
         goal[1] = buf[1] - '0';
       }
-      idx = 0;  // reset for next message, valid or not
+      idx = 0;  // reset for next message
     } else if (idx < (int)sizeof(buf) - 1) {
       buf[idx++] = c;
     }
