@@ -1,4 +1,3 @@
-//Arduino Code
 // ---- Timing ----
 const unsigned long desired_Ts_ms = 10;  // sample time (100 Hz loop)
 const unsigned long RUN_TIME_MS = 5000;  // stop after 5 seconds
@@ -14,7 +13,6 @@ const int encA[2]   = {2, 3};
 const int encB[2]   = {5, 6};
 
 // ---- Encoder ----
-// CHECK THIS: turn a wheel one full revolution by hand and read the count.
 // Counting only RISING edges of channel A gives 1/4 of full quadrature.
 const float COUNTS_PER_REV = 3200.0;
 volatile long encoderCount[2] = {0, 0};
@@ -22,8 +20,8 @@ long prevPos_counts[2] = {0, 0};
 
 // ---- Controller gains ----
 float Kp = 11;             // inner velocity loop: volts per (rad/s) of speed error
-float Kp_pos = 5.0;        // outer position loop: (rad/s) per rad of position error  -- tune
-float Ki_pos = 0;        // outer position loop integral gain -- start at 0, then add
+float Kp_pos = 5.0;        // outer position loop: (rad/s) per rad of position error 
+float Ki_pos = 1;        // outer position loop integral
 const float MAX_SPEED = 8.0;          // cap on requested wheel speed [rad/s]
 const float Battery_Voltage = 7.6;    // used to scale voltage into PWM
 
@@ -90,7 +88,7 @@ void loop() {
     integral_error[i] += pos_error * Ts;
     float desired_speed = Kp_pos * pos_error + Ki_pos * integral_error[i];
 
-    // Cap the requested speed; anti-windup: undo the integration while capped
+    // Cap the requested speed
     if (desired_speed > MAX_SPEED || desired_speed < -MAX_SPEED) {
       integral_error[i] -= pos_error * Ts;
       desired_speed = constrain(desired_speed, -MAX_SPEED, MAX_SPEED);
@@ -111,9 +109,4 @@ void loop() {
   Serial.print(desired_pos[0]); Serial.print("\t");
   Serial.print(actual_pos[0]);  Serial.print("\t");
   Serial.println(actual_pos[1]);
-
-  // ---- Hold a fixed sample time ----
-  while (millis() < last_time_ms + desired_Ts_ms) { }
-  last_time_ms = millis();
-
 }
