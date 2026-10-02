@@ -1,37 +1,21 @@
-%% Nathan Gebre-Hiwot Assignment 2b
-%% Closed-Loop Motor POSITION Control: Simulation vs. Experiment
-
-%% Laplace variable (needed for the PI(s) block, which is defined
-%% symbolically in terms of s, e.g. Kp*error + Ki/s*error)
-s = tf('s');
+s = tf('s'); %% replaces transfer function in simulink, its not working there for some reason
 
 %% Motor Model Parameters (from system ID, Section 3.3)
 K = 0.364;      % DC gain [rad/Vs]
 sigma = 18;     % time constant reciprocal [1/s]
-
-%% Inner-Loop Velocity Controller (reused from Assignment 2a)
 Kp_vel = 11;    % proportional velocity gain, set inside the Velocity Subsystem
 
-%% Outer-Loop Position Controller (PI, not full PID)
-% These names MUST match exactly what's typed into the PI(s) block's
-% Gain fields in Simulink - it's expecting bare "Kp" and "Ki".
-Kp = 5;     % matches Kp_pos = 5.0 used on the Arduino
-Ki = 1;     % matches Ki_pos = 1 used on the Arduino
+Kp = 5;     % error loop gain
+Ki = 1;     % integral gain
 
 %% Run Simulation
-open_system('PI_control')          % open the Simulink model
-out = sim('PI_control');           % run it, results stored in out
+open_system('PI_control')     % open the Simulink model
+out = sim('PI_control'); 
 
-%% Load Experimental Data
-% Columns as actually logged by the Arduino:
-%   col1 = time, col2 = desired_pos[0], col3 = actual_pos[0], col4 = actual_pos[1]
-% Note: voltage and velocity are NOT logged by the current Arduino code,
-% so only a position comparison is possible with this data.
+%%load experimental results
 data = readmatrix('rawdata.txt');
-
-%% Plot Simulated vs. Experimental Results
+%% Plot
 figure
-
 % Plot 1: Desired Position (commanded step, sim vs. Arduino)
 subplot(2,1,1)
 plot(out.DesiredPosition,'--','linewidth',2)
@@ -55,10 +39,4 @@ ylabel('Position (rad)')
 title('Closed-Loop Position: Simulated vs. Experimental')
 
 %% Interpretation
-% TODO: Fill in once compared. With PI control on the outer position
-% loop (Ki_pos nonzero), steady-state position error should go to zero,
-% and disturbance rejection (hand-nudging the wheel) should pull it
-% back to setpoint - confirm this matches what you see experimentally.
-% Note: the current Arduino code only logs desired_pos and actual_pos
-% for both wheels - it does not log voltage or velocity, so those
-% cannot be compared to simulation with this data.
+
