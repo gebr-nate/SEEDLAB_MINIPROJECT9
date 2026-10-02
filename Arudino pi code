@@ -122,4 +122,14 @@ void loop() {
     unsigned int PWM = 255 * fabs(Voltage) / Battery_Voltage;
     analogWrite(pwmPin[i], min(PWM, 255));
   }
+
+  // ---- Data logging (time, desired1, actual1, desired2, actual2) ----
+  if (++log_counter >= LOG_EVERY) {
+    log_counter = 0;
+    Serial.print(current_time);   Serial.print("\t");
+    Serial.print(desired_pos[0]); Serial.print("\t");
+    Serial.print(actual_pos[0]);  Serial.print("\t");
+    Serial.print(desired_pos[1]); Serial.print("\t");
+    Serial.println(actual_pos[1]);
+  }
 }
