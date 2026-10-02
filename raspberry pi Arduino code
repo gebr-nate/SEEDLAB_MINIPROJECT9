@@ -1,5 +1,6 @@
 // ---- Timing ----
 const unsigned long desired_Ts_ms = 10;  // sample time (100 Hz loop)
+const unsigned long RUN_TIME_MS = 5000;  // stop after 5 seconds
 unsigned long last_time_ms;
 unsigned long start_time_ms;
 float current_time;                      // seconds since start
