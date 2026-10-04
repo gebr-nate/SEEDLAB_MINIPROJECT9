@@ -18,7 +18,7 @@ const int encA[2]   = {2, 3};
 const int encB[2]   = {5, 6};
 
 // ---- Encoder ----
-const float COUNTS_PER_REV = 1600.0;
+const float COUNTS_PER_REV = 800.0;
 volatile long encoderCount[2] = {0, 0};
 long prevPos_counts[2] = {0, 0};
 
@@ -35,7 +35,7 @@ int goal[2] = {0, 0};             // 0 or 1 for each wheel
 
 // ---- Encoder ISRs ----
 void encoderISR1() { encoderCount[0] += (digitalRead(encB[0]) == HIGH) ? 1 : -1; }
-void encoderISR2() { encoderCount[1] += (digitalRead(encB[1]) == HIGH) ? 1 : -1; }
+void encoderISR2() { encoderCount[1] += (digitalRead(encB[1]) == HIGH) ? -1 : 1; }
 
 // ---- Read a two-bit goal like "01" from the Serial Monitor ----
 void readGoalFromSerial() {
@@ -119,7 +119,14 @@ void loop() {
     float Voltage = Kp * error;
 
     // ---- Output ----
-    digitalWrite(dirPin[i], (Voltage > 0) ? HIGH : LOW);
+    if (i == 0) {
+    // Motor 0 stays normal
+       digitalWrite(dirPin[i], (Voltage > 0) ? HIGH : LOW);
+    }
+    else {
+    // Motor 1 is physically reversed
+      digitalWrite(dirPin[i], (Voltage > 0) ? LOW : HIGH);
+    }
     unsigned int PWM = 255 * fabs(Voltage) / Battery_Voltage;
     analogWrite(pwmPin[i], min(PWM, 255));
   }
