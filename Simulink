@@ -39,4 +39,16 @@ ylabel('Position (rad)')
 title('Closed-Loop Position: Simulated vs. Experimental')
 
 %% Interpretation
-
+% The simulated and experimental position responses match closely. Both
+% start moving when the setpoint steps to pi rad (180 deg) at t = 1 s,
+% rise along nearly the same curve, and settle at the setpoint by about
+% t = 2.5 to 3 s. This suggests the motor model (K and sigma) and the
+% PI gains (Kp = 5, Ki = 1) in the simulation represent the real system
+% well.
+% The one difference is that the simulated response rises slightly above
+% the experimental curve near the end. The simulation includes the 7.6 V
+% voltage saturation, but it does not include the 8 rad/s speed cap and
+% anti-windup used in the Arduino code, nor friction or encoder
+% quantization. These effects limit the real wheel's overshoot. Even so,
+% the model predicts the rise time and settling behavior well enough to
+% use for tuning the controller.
