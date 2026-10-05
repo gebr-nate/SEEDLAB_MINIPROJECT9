@@ -13,10 +13,10 @@ Repository for **EENG350: Systems Exploration, Engineering, and Design Laborator
 | Folder | Contents |
 |--------|----------|
 | [`Mini Project/`](Mini%20Project/) | Computer-vision-driven wheel position control: Pi code, Arduino code, Simulink models, and subsystem test code. See its README for details. |
-Contains(all with comments):
+Contains(all with comments):|
 - Raspberry pi (python) code
 - Arduino Code
-- Simulink Code
+- Simulink Code|
 
 Each project folder has its own `README.md` describing its code, hardware connections, and how to run it.
 
