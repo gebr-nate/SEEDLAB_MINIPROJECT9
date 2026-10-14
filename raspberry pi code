@@ -1,3 +1,9 @@
+#Mini project - CV code that dettects aruco marker and creates
+# quadrants, whichever quadrant marker is in determines wheel position and
+#sends to arduino
+
+
+
 import cv2
 from cv2 import aruco
 from time import sleep#for cam stuff
@@ -10,7 +16,7 @@ import serial #using serial connection
 
 #lcd set
 import board
-lcd_queue = queue.Queue()
+lcd_queue = queue.Queue()#lcd message queue for threading
 
 lcd_columns = 16
 lcd_rows = 2#lcd size
@@ -28,13 +34,12 @@ parameters=aruco.DetectorParameters() #detector parameters
 parameters.minMarkerPerimeterRate = 0.01#controls min marker consideration
 
 def update_lcd():
-    while True:
-        if not lcd_queue.empty():
-            message = lcd_queue.get()
-            lcd.message = message
+    while True:#doesnt end on its own
+            message = lcd_queue.get()#get queue message
+            lcd.message = message#display message
 #lcd thread start
-lcd_thread = threading.Thread(target=update_lcd)
-lcd_thread.daemon = True
+lcd_thread = threading.Thread(target=update_lcd)#new thread whose job is to run the updatelcd func
+lcd_thread.daemon = True #keep program alive
 lcd_thread.start()
 
 
@@ -45,13 +50,14 @@ sleep(2)
 #camera set
 camera=cv2.VideoCapture(0)#open cam
 camera.set(cv2.CAP_PROP_FRAME_WIDTH, 320)
-camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 240)#image is 640x480 pixels
+camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 240)#image is 320x240 pixels
+camera.set(cv2.CAP_PROP_FPS, 30)
 camera.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
 sleep(0.5) #camera time to start
 last_message=""#used later so dont need to keep clearing and rewriting lcd
 
-
+#cam loop for aruco detect+greyscale
 while True:
     ret,frame=camera.read()#take pic
     if not ret:
@@ -68,7 +74,7 @@ while True:
 
     #make copy so can draw boxes on markers
     overlay = frame.copy()
-    #quadrant lines
+    #quadrant lines on cam
     cv2.line(overlay, (160, 0), (160, 240), (0,255,0), 2)
     cv2.line(overlay, (0, 120), (320, 120), (0,255,0), 2)
     
@@ -83,11 +89,12 @@ while True:
         center_x=int(marker_corners[:,0].mean())
         center_y=int(marker_corners[:,1].mean())
         #print("marker center:", center_x, center_y)
+        
         #center point on image
         cv2.circle(overlay, (center_x, center_y), 5, (0, 0, 255), -1)
 
         #determining quadrant
-        if center_x < 160 and center_y < 120:
+        if center_x < 160 and center_y < 120:#image is 320X240
             quadrant = "NW"
             left_goal = 0
             right_goal = 1
@@ -116,19 +123,21 @@ while True:
     else:
         #print("no markers found")
         message=last_message
+        
     # only send to lcd if message has changed
     if message != last_message:
-        lcd_queue.put(message)
+        lcd_queue.put(message)#main thread puts message
+        
     #send wheel goals to arduino
-        if ids is not None:
-            command = "{}{}\n".format(right_goal,left_goal)
+        if ids is not None:#make sure marker exisits
+            command = "{}{}\n".format(right_goal,left_goal)#serial to the arduino
             try:
-                arduino.write(command.encode())
+                arduino.write(command.encode())#convert to bytes, then send to arduino
                 print("sent to Arduino", command.strip())
 
-            except serial.SerialTimeoutException:
-                print("Arduino write timed out")
-        last_message=message
+            except serial.SerialTimeoutException:#for timeout
+                print("write to arduino time out")
+        last_message=message#lcd thread displays
 
     cv2.imshow("aruco detection", overlay)#display cam image
     k=cv2.waitKey(1)&0xFF#wait 1ms and see if q pressed
