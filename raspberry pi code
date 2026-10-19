@@ -1,3 +1,86 @@
+"""
+===============================================================================
+File:        aruco_quadrant_wheel_control.py
+Title:       ArUco Marker Quadrant Tracker -> Arduino Wheel Goal Sender
+Platform:    Raspberry Pi (Linux, Python 3) with CircuitPython Blinka
+Serial:      115200 baud to Arduino on /dev/ttyACM0
+===============================================================================
+
+PURPOSE
+-------
+Uses a camera and OpenCV to detect an ArUco marker (DICT_6X6_50), works out
+which quadrant of the camera image the marker's center is in, and sends the
+matching two-bit wheel goal to an Arduino running the dual-motor position
+controller (dual_motor_position_control.ino). The goal currently being sent
+is also shown on a 16x2 character LCD.
+
+The 320x240 image is split into four quadrants by a vertical line at x = 160
+and a horizontal line at y = 120:
+
+    Quadrant   Marker center         left_goal  right_goal  Sent to Arduino
+    --------   -------------------   ---------  ----------  ---------------
+    NW         x < 160,  y < 120         0          1            "10"
+    NE         x >= 160, y < 120         0          0            "00"
+    SW         x < 160,  y >= 120        1          1            "11"
+    SE         x >= 160, y >= 120        1          0            "01"
+
+Each goal bit means: 0 = wheel at 0 rad, 1 = wheel at PI rad.
+
+The command is written as "<right_goal><left_goal>\n". The Arduino reads the
+first character as motor 1 and the second as motor 2, so motor 1 is the right
+wheel and motor 2 is the left wheel.
+
+Only the first detected marker (corners[0]) is used. If no marker is seen,
+the last goal is kept and nothing new is sent. The program only sends a new
+command when the LCD message (the goal pair) changes.
+
+USAGE
+-----
+1. Upload dual_motor_position_control.ino to the Arduino and connect it to
+   the Raspberry Pi over USB.
+2. Run this script on the Pi with a display attached (cv2.imshow is used):
+       python3 aruco_quadrant_wheel_control.py
+3. Hold an ArUco marker (6x6, ID within the 50-marker dictionary) in front
+   of the camera. Move it between quadrants to change the wheel goals.
+4. Press 'q' in the camera window to stop. The camera and serial port are
+   released and windows are closed on exit.
+
+HARDWARE CONFIGURATION
+----------------------
+Required hardware:
+  - Raspberry Pi with I2C enabled (raspi-config -> Interface Options -> I2C)
+    and a desktop/display for the preview window.
+  - USB camera (opened as device index 0), configured to 320x240 at 30 FPS
+    with a buffer size of 1 to keep latency low.
+  - Adafruit-style 16x2 RGB character LCD with I2C backpack, driven through
+    the adafruit_character_lcd.character_lcd_rgb_i2c library on the Pi's
+    default I2C bus (board.I2C(): SDA/SCL pins).
+  - Arduino (see dual_motor_position_control.ino) connected by USB; it
+    enumerates as /dev/ttyACM0 and communicates at 115200 baud. The script
+    waits 2 s after opening the port to allow the Arduino to reset.
+  - Printed ArUco marker from the DICT_6X6_50 dictionary.
+
+Connections:
+  Raspberry Pi  <--USB-->  Arduino (serial, /dev/ttyACM0, 115200 baud)
+  Raspberry Pi  <--USB-->  Camera (device index 0)
+  Raspberry Pi  <--I2C-->  16x2 RGB character LCD (SDA, SCL, power, GND)
+
+Software dependencies:
+  - opencv-contrib-python (provides cv2.aruco)
+  - adafruit-circuitpython-charlcd
+  - adafruit-blinka (provides board / busio)
+  - pyserial
+
+Notes:
+  - If the Arduino appears on a different port, update the serial path in
+    the "arduino serial connection" section.
+  - The LCD is updated from a background daemon thread fed by a queue, so
+    slow I2C writes do not stall the camera loop.
+  - minMarkerPerimeterRate is set low (0.01) so small or distant markers
+    are still detected at this low resolution.
+===============================================================================
+"""
+
 #Mini project - CV code that dettects aruco marker and creates
 # quadrants, whichever quadrant marker is in determines wheel position and
 #sends to arduino
@@ -147,4 +230,3 @@ while True:
 camera.release()
 arduino.close()
 cv2.destroyAllWindows()
-        
