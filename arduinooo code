@@ -1,4 +1,75 @@
-
+/*
+ * ============================================================================
+ * File:        dual_motor_position_control.ino
+ * Title:       Dual DC Motor Cascaded Position/Velocity Controller
+ * Platform:    Arduino (ATmega328P-class board, e.g. Uno / Nano)
+ * Serial:      115200 baud
+ * ============================================================================
+ *
+ * PURPOSE
+ * -------
+ * Controls the angular position of two encoder-equipped DC motors (wheels)
+ * using a cascaded control structure running at a fixed 100 Hz (10 ms) rate:
+ *
+ *   Outer loop : PI position controller  -> produces a desired wheel speed
+ *                (rad/s), saturated at +/- MAX_SPEED with anti-windup.
+ *   Inner loop : P velocity controller   -> produces a motor voltage command,
+ *                converted to a PWM duty cycle based on the battery voltage.
+ *
+ * Each wheel has only two possible targets: 0 rad (goal bit = 0) or
+ * PI rad / half a revolution (goal bit = 1).
+ *
+ * USAGE
+ * -----
+ * Open the Serial Monitor at 115200 baud, set line ending to "Newline" (or
+ * "Both NL & CR"), and send a two-character goal string:
+ *
+ *   "00"  -> motor 1 to 0,  motor 2 to 0
+ *   "01"  -> motor 1 to 0,  motor 2 to PI
+ *   "10"  -> motor 1 to PI, motor 2 to 0
+ *   "11"  -> motor 1 to PI, motor 2 to PI
+ *
+ * The first character is motor 1 (index 0), the second is motor 2 (index 1).
+ * Any other input is ignored. A valid new goal resets the position-loop
+ * integrators. The encoder zero position is wherever the wheels are when
+ * the board powers up/resets.
+ *
+ * HARDWARE CONFIGURATION
+ * ----------------------
+ * Required hardware:
+ *   - Arduino board with at least two external-interrupt pins (pins 2 and 3
+ *     on an Uno/Nano) and two PWM outputs on pins 9 and 10.
+ *   - Dual H-bridge motor driver with a shared enable input and, per
+ *     channel, a direction input and a PWM (speed) input.
+ *   - Two brushed DC motors with quadrature encoders (A/B channels).
+ *   - Battery supply of approximately 7.6 V for the motor driver/motors
+ *     (value used by the PWM scaling; update Battery_Voltage if different).
+ *   - Common ground between Arduino, motor driver, and encoders.
+ *
+ * Pin map:
+ *   Function              Motor 1 (idx 0)   Motor 2 (idx 1)   Shared
+ *   --------------------  ----------------  ----------------  ---------
+ *   Driver enable         -                 -                 D4
+ *   Direction (dirPin)    D7                D8                -
+ *   PWM speed (pwmPin)    D9                D10               -
+ *   Encoder A (interrupt) D2                D3                -
+ *   Encoder B             D5                D6                -
+ *
+ * Encoder: 800 counts per wheel revolution (COUNTS_PER_REV). Counting is
+ * triggered on the RISING edge of channel A, with channel B read in the ISR
+ * to determine direction.
+ *
+ * Motor orientation: Motor 2 is physically mounted in reverse, so its
+ * encoder count sign and its direction-pin logic are both inverted in
+ * software so that positive position means forward for both wheels.
+ *
+ * Notes:
+ *   - Pins 2 and 3 are the only external-interrupt pins on ATmega328P
+ *     boards, so the encoder A channels must stay on them.
+ *   - Tuning parameters (Kp, Kp_pos, Ki_pos, MAX_SPEED, Battery_Voltage)
+ *     are set in the "Controller gains" section below.
+ * ============================================================================
+ */
 
 // ---- Timing ----
 const unsigned long desired_Ts_ms = 10;   // sample time (100 Hz loop)
